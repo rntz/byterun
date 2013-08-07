@@ -612,6 +612,8 @@ class VirtualMachine(object):
 
     def byte_SETUP_EXCEPT(self, dest):
         self.push_block('except', dest)
+        if PY3:
+            self.push_block('except', dest)
 
     def byte_SETUP_FINALLY(self, dest):
         self.push_block('finally', dest)
@@ -673,6 +675,8 @@ class VirtualMachine(object):
 
     def byte_POP_EXCEPT(self):
         block = self.frame.block_stack.pop()
+        exctype, value, tb = self.last_exception
+        self.push(tb, value, exctype)
         if block.type != 'except':
             raise Exception("popped block is not an except handler")
         self.unwind_except_handler(block)
