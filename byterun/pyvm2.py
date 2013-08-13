@@ -251,7 +251,7 @@ class VirtualMachine(object):
                         self.jump(block.handler)
 
 
-                    if why in ('return', 'continue'):
+                    if block.type == 'finally' and why in ('return', 'continue'):
                         self.push(self.return_value)
                         self.push(why)
 
