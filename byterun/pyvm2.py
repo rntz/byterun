@@ -226,9 +226,9 @@ class VirtualMachine(object):
 
                     self.pop_block()
 
-                    #if block.type == 'except':
-                    #    self.unwind_except_handler(block)
-                    #    continue
+                    if block.type == 'except':
+                       self.unwind_except_handler(block)
+                       continue
 
                     while len(self.stack) > block.level:
                         self.pop()
@@ -239,16 +239,21 @@ class VirtualMachine(object):
                         break
 
                     if (block.type == 'finally' or
-                        (block.type == 'except' and why == 'exception') or
-                        block.type == 'with'):
+                        block.type == 'try') and why == 'exception':
 
-                        if why == 'exception':
-                            exctype, value, tb = self.last_exception
-                            self.push(tb, value, exctype)
-                        else:
-                            if why in ('return', 'continue'):
-                                self.push(self.return_value)
-                            self.push(why)
+                        self.push_block('except', -1)
+
+                        exctype, value, tb = self.last_exception
+                        self.push(tb, value, exctype)
+                        self.push(tb, value, exctype)
+
+                        why = None
+                        self.jump(block.handler)
+
+
+                    if why in ('return', 'continue'):
+                        self.push(self.return_value)
+                        self.push(why)
 
                         why = None
                         self.jump(block.handler)
@@ -614,7 +619,7 @@ class VirtualMachine(object):
         return 'continue'
 
     def byte_SETUP_EXCEPT(self, dest):
-        self.push_block('except', dest)
+        self.push_block('try', dest)
 
     def byte_SETUP_FINALLY(self, dest):
         self.push_block('finally', dest)
