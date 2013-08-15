@@ -251,7 +251,7 @@ class VirtualMachine(object):
                         self.jump(block.handler)
 
 
-                    if why in ('return', 'continue'):
+                    if block.type == 'finally' and why in ('return', 'continue'):
                         self.push(self.return_value)
                         self.push(why)
 
@@ -634,6 +634,7 @@ class VirtualMachine(object):
                 block = self.pop_block()
                 assert block.type == 'except'
                 self.unwind_except_handler(block)
+                why = None
         elif status is None:
             why = None
         elif issubclass(status, BaseException):
@@ -693,7 +694,7 @@ class VirtualMachine(object):
         ctxmgr = self.pop()
         self.push(ctxmgr.__exit__)
         ctxmgr_obj = ctxmgr.__enter__()
-        self.push_block('with', dest)
+        self.push_block('finally', dest)
         self.push(ctxmgr_obj)
 
     def byte_WITH_CLEANUP(self):
@@ -711,17 +712,19 @@ class VirtualMachine(object):
                 exit_func = self.pop(1)
             u = None
         elif issubclass(u, BaseException):
-            w, v, u = self.popn(3)
-            exit_func = self.pop()
-            self.push(w, v, u)
+            exit_func = self.stack.pop(6)
+            u, v, w = map(self.stack.__getitem__, range(-3,-6,-1))
+            self.stack.insert(-4, None) #ceval.c line 2748
+            block = self.frame.block_stack[-1]
+            assert block.type == 'except'
+            new_block = Block(block.type, block.handler, block.level -1)
+            self.frame.block_stack[-1] = new_block
         else:       # pragma: no cover
             raise VirtualMachineError("Confused WITH_CLEANUP")
         exit_ret = exit_func(u, v, w)
         err = (u is not None) and bool(exit_ret)
         if err:
-            # An error occurred, and was suppressed, pop it from the stack.
-            self.popn(3)
-            self.push('silence') # Silence is not None
+            self.push('silenced') # Silence is not None
 
     ## Functions
 
