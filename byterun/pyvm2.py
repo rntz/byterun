@@ -205,7 +205,7 @@ class VirtualMachine(object):
                 why = 'exception'
 
             # Deal with any block management we need to do.
-
+            # TODO: rewrite to make clear that none of this executes if why == None ?
             if why == 'exception':
                 # TODO: ceval calls PyTraceBack_Here, not sure what that does.
                 pass
