@@ -217,9 +217,6 @@ class VirtualMachine(object):
                 #ceval calls PyTraceBack_Here, used for chaining tracebacks between frames
                 pass
 
-            if why == 'reraise':
-                why = 'exception'
-
             if why != 'yield':
                 while why and frame.block_stack:
 
@@ -662,7 +659,7 @@ class VirtualMachine(object):
             val = self.pop()
             tb = self.pop()
             self.last_exception = (exctype, val, tb)
-            why = 'reraise'
+            why = 'exception'
         else:       # pragma: no cover
             raise VirtualMachineError("Confused END_FINALLY")
         return why
@@ -701,11 +698,7 @@ class VirtualMachine(object):
 
         self.last_exception = (exctype, val, tb)
 
-        if tb:
-            #TODO: test coverage hole on reraise in PY2
-            return 'reraise'
-        else:
-            return 'exception'
+        return 'exception'
 
     def byte_RAISE_VARARGS_py3(self, argc):
         cause = exc = None
@@ -724,7 +717,7 @@ class VirtualMachine(object):
             if exc_type == None:
                 return 'exception'
                 # raise Exception("No active exception to reraise")
-            return 'reraise'
+            return 'exception'
         elif type(exc) == type: # as in `raise ValueError`
             exc_type = exc
             val = exc() # make an instance
