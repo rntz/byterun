@@ -87,6 +87,9 @@ class Function(object):
         return retval
 
 if PY2:
+    def dummy_mro(cls):
+        return [cls]
+
     class Class(object):
         def __init__(self, name, bases, methods):
             self.__name__ = name
@@ -94,7 +97,7 @@ if PY2:
             self.locals = dict(methods)
 
         def __call__(self, *args, **kw):
-            return Object(self, self.locals, args, kw)
+            return Object(self, {}, args, kw)
 
         def __repr__(self):         # pragma: no cover
             return '<Class %s at 0x%08x>' % (self.__name__, id(self))
@@ -116,26 +119,53 @@ if PY2:
         def __init__(self, _class, methods, args, kw):
             self._class = _class
             self.locals = methods
-            if '__init__' in methods:
-                methods['__init__'](self, *args, **kw)
+            # dummy_mro(_class).__init__(*args, **kw)
 
         def __repr__(self):         # pragma: no cover
             return '<%s Instance at 0x%08x>' % (self._class.__name__, id(self))
 
-        def __getattr__(self, name):
-            try:
-                val = self.locals[name]
-            except KeyError:
-                raise AttributeError(
-                    "%r object has no attribute %r" % (self._class.__name__, name)
-                )
-            # Check if we have a descriptor
-            get = getattr(val, '__get__', None)
-            if get:
-                return get(self, self._class)
-            # Not a descriptor, return the value.
-            return val
+        def __getattribute__(self, name):
+            # There are 4 cases for attribute lookup as seen in _PyObject_GenericGetattr:
+            # 1. The attr is a data descriptor
+            # 2. The attr is in the object's __dict__
+            # 3. The attr is a non-data descriptor (usually a method)
+            # 4. The attr is a non-descriptor somewhere up the MRO.
+            cls = object.__getattribute__(self, '_class')
+            _locals = object.__getattribute__(self, 'locals')
+            found = False
+            for mro_cls in dummy_mro(cls):
+                try:
+                    attr_from_mro = getattr(mro_cls, name)
+                except AttributeError:
+                    continue
+                found = True
+                if isinstance(attr_from_mro, Object):
+                    attr_type = attr_from_mro._class
+                else:
+                    attr_type = type(attr_from_mro)
+                break
 
+            if found:
+                # check for data descriptors
+                if hasattr(attr_type, "__get__") and hasattr(attr_type, "__set__"):
+                    return attr_type.__get__(attr_from_mro, self, cls)
+
+            try:
+                # check instance's dict
+                return _locals[name]
+            except KeyError:
+                pass
+
+            if found:
+                if hasattr(attr_type, "__get__"):
+                    # check for non-data descriptors
+                    return attr_type.__get__(attr_from_mro, self, cls)
+                else:
+                    return attr_from_mro
+
+            raise AttributeError(
+                    "%r object has no attribute %r" % (cls.__name__, name)
+                )
 
 class Method(object):
     def __init__(self, obj, _class, func):

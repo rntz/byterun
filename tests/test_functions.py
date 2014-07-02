@@ -17,6 +17,18 @@ class TestFunctions(vmtest.VmTestCase):
             fn(5, "b", "c")
             """)
 
+    def test_nested(self):
+        self.assert_ok("""\
+            def foo():
+                x = 1
+                def bar(y):
+                    z = y + 2
+                    return z
+                return bar(x)
+            foo()
+            """)
+
+
     def test_recursion(self):
         self.assert_ok("""\
             def fact(n):
