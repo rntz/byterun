@@ -95,6 +95,7 @@ if PY2:
             self.__name__ = name
             self.__bases__ = bases
             self.locals = dict(methods)
+            self.__mro__ = self._compute_mro(self)
 
         def __call__(self, *args, **kw):
             return Object(self, {}, args, kw)
@@ -103,10 +104,7 @@ if PY2:
             return '<Class %s at 0x%08x>' % (self.__name__, id(self))
 
         def __getattr__(self, name):
-            try:
-                val = self.locals[name]
-            except KeyError:
-                raise AttributeError("Fooey: %r" % (name,))
+            val = self.resolve_attr(name)
             # Check if we have a descriptor
             get = getattr(val, '__get__', None)
             if get:
@@ -115,57 +113,102 @@ if PY2:
             return val
 
 
+        @classmethod
+        def mro_merge(cls, seqs):
+            """
+            Merge a sequence of MROs into a single resulting MRO.
+            This code is copied from the following URL with print statments removed.
+            https://www.python.org/download/releases/2.3/mro/
+            """
+            res = []
+            while True:
+                nonemptyseqs = [seq for seq in seqs if seq]
+                if not nonemptyseqs:
+                    return res
+                for seq in nonemptyseqs:  # find merge candidates among seq heads
+                    cand = seq[0]
+                    nothead = [s for s in nonemptyseqs if cand in s[1:]]
+                    if nothead:
+                        cand = None  # reject candidate
+                    else:
+                        break
+                if not cand:
+                    raise TypeError("Illegal inheritance.")
+                res.append(cand)
+                for seq in nonemptyseqs:  # remove candidate
+                    if seq[0] == cand:
+                        del seq[0]
+
+        @classmethod
+        def _compute_mro(cls, c):
+            """
+            Compute the class precedence list (mro) according to C3.
+            This code is copied from the following URL with print statments removed.
+            https://www.python.org/download/releases/2.3/mro/
+            """
+            return tuple(cls.mro_merge([[c]] +
+                                       [list(base.__mro__) for base in c.__bases__]
+                                       + [list(c.__bases__)]))
+
+        def resolve_attr(self, name):
+            """
+            Find an attribute in self and return it raw. This does not handle
+            properties or method wrapping.
+            """
+            for base in self.__getattribute__('__mro__'):
+                if isinstance(base, Class):
+                    if name in base.locals:
+                        return base.locals[name]
+                else:
+                    if name in base.__dict__:
+                        # Avoid using getattr so we can handle method wrapping
+                        return base.__dict__[name]
+            raise AttributeError(
+                "%r class has no attribute %r" % (self.__name__, name)
+            )
+
     class Object(object):
         def __init__(self, _class, methods, args, kw):
             self._class = _class
             self.locals = methods
-            # dummy_mro(_class).__init__(*args, **kw)
+            _class.resolve_attr('__init__')(self, *args, **kw)
 
         def __repr__(self):         # pragma: no cover
             return '<%s Instance at 0x%08x>' % (self._class.__name__, id(self))
 
-        def __getattribute__(self, name):
+        def __getattr__(self, name):
             # There are 4 cases for attribute lookup as seen in _PyObject_GenericGetattr:
             # 1. The attr is a data descriptor
             # 2. The attr is in the object's __dict__
             # 3. The attr is a non-data descriptor (usually a method)
             # 4. The attr is a non-descriptor somewhere up the MRO.
-            cls = object.__getattribute__(self, '_class')
-            _locals = object.__getattribute__(self, 'locals')
-            found = False
-            for mro_cls in dummy_mro(cls):
+            # try:
+            #     val = self._class.resolve_attr(name)
+            #     found = True
+            # except AttributeError:
+            #     found = False
+
+            if name in self.locals:
+                val = self.locals[name]
+            else:
                 try:
-                    attr_from_mro = getattr(mro_cls, name)
+                    val = self._class.resolve_attr(name)
                 except AttributeError:
-                    continue
-                found = True
-                if isinstance(attr_from_mro, Object):
-                    attr_type = attr_from_mro._class
-                else:
-                    attr_type = type(attr_from_mro)
-                break
+                    raise AttributeError(
+                        "%r object has no attribute %r" %
+                        (self._class.__name__, name)
+                    )
 
-            if found:
-                # check for data descriptors
-                if hasattr(attr_type, "__get__") and hasattr(attr_type, "__set__"):
-                    return attr_type.__get__(attr_from_mro, self, cls)
+            # Check if we have a descriptor
+            get = getattr(val, '__get__', None)
+            if get:
+                return get(self, self._class)
+            # Not a descriptor, return the value.
+            return val
 
-            try:
-                # check instance's dict
-                return _locals[name]
-            except KeyError:
-                pass
-
-            if found:
-                if hasattr(attr_type, "__get__"):
-                    # check for non-data descriptors
-                    return attr_type.__get__(attr_from_mro, self, cls)
-                else:
-                    return attr_from_mro
-
-            raise AttributeError(
-                    "%r object has no attribute %r" % (cls.__name__, name)
-                )
+            # raise AttributeError(
+            #         "%r object has no attribute %r" % (cls.__name__, name)
+            #     )
 
 class Method(object):
     def __init__(self, obj, _class, func):
