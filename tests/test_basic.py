@@ -389,14 +389,38 @@ class TestIt(vmtest.VmTestCase):
             assert b.baz == 3
             """)
 
+    def test_class_locals_inaccessible(self):
+        self.assert_ok("""\
+            class Foo(object):
+                pass
+            Foo.locals
+            """, raises=AttributeError)
+
+    def test_instance_locals_inaccessible(self):
+        self.assert_ok("""\
+            class Foo(object):
+                pass
+            f = Foo()
+            f.locals
+            """, raises=AttributeError)
+
+    def test_field_named_locals(self):
+        self.assert_ok("""\
+            class Foo(object):
+                def __init__(self):
+                    self.locals = "hello"
+            f = Foo()
+            print(f.locals)
+            """)
+
     def test_repr(self):
         self.assert_ok("""\
-        class A(object):
-            def __repr__(self):
-                return 'an A'
-        t = A()
-        print(t)
-        """)
+            class A(object):
+                def __repr__(self):
+                    return 'an A'
+            t = A()
+            print(t)
+            """)
 
     def test_type_of(self):
         self.assert_ok("""\
