@@ -286,16 +286,25 @@ class TestIt(vmtest.VmTestCase):
             print(thing1.meth(4), thing2.meth(5))
             """)
 
-    def test_calling_methods_wrong(self):
-        self.assert_ok("""\
-            class Thing(object):
-                def __init__(self, x):
-                    self.x = x
-                def meth(self, y):
-                    return self.x * y
-            thing1 = Thing(2)
-            print(Thing.meth(14))
-            """, raises=TypeError)
+    if PY2:
+        def test_calling_unbound_methods(self):
+            self.assert_ok("""\
+                class Thing(object):
+                    def __init__(self, x):
+                        self.x = x
+                    def meth(self, y):
+                        return self.x * y
+                thing1 = Thing(2)
+                print(Thing.meth(14))
+                """, raises=TypeError)
+
+    if PY3:
+        def test_unbound_methods_on_non_instance(self):
+            self.assert_ok("""\
+                class Thing(object):
+                    def meth(self): return self
+                print(Thing.meth(2))
+                """)
 
     def test_calling_subclass_methods(self):
         self.assert_ok("""\
@@ -488,13 +497,6 @@ class TestIt(vmtest.VmTestCase):
                     print(x)
             m = Thing.meth
             m(Thing(), 1815)
-            """)
-
-    def test_unbound_methods_on_non_instance(self):
-        self.assert_ok("""\
-            class Thing(object):
-                def meth(self): return self
-            print(Thing.meth(2))
             """)
 
     def test_bound_methods(self):
