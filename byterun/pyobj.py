@@ -182,33 +182,37 @@ if PY2:
             # 2. The attr is in the object's __dict__
             # 3. The attr is a non-data descriptor (usually a method)
             # 4. The attr is a non-descriptor somewhere up the MRO.
-            # try:
-            #     val = self._class.resolve_attr(name)
-            #     found = True
-            # except AttributeError:
-            #     found = False
-
-            if name in self.locals:
-                val = self.locals[name]
+            try:
+                val = self._class.resolve_attr(name)
+                found = True
+            except AttributeError:
+                found = False
             else:
-                try:
-                    val = self._class.resolve_attr(name)
-                except AttributeError:
-                    raise AttributeError(
-                        "%r object has no attribute %r" %
-                        (self._class.__name__, name)
-                    )
+                # Case 1: it's a data descriptor!
+                if hasattr(val, '__get__') and hasattr(val, '__set__'):
+                    return val.__get__(self, name)
 
-            # Check if we have a descriptor
-            get = getattr(val, '__get__', None)
-            if get:
-                return get(self, self._class)
-            # Not a descriptor, return the value.
+            # Case 2: the attr is in our __dict__ (that is, self.locals)
+            if name in self.locals:
+                return self.locals[name]
+
+            if not found:
+                raise AttributeError("%r object has no attribute %r" %
+                                     (self._class.__name__, name))
+
+            # Case 3: The attr is a non-data descriptor
+            if hasattr(val, '__get__'):
+                return val.__get__(self, self._class)
+
+            # Case 4: Attr is a non-descriptor somewhere up the MRO
             return val
 
-            # raise AttributeError(
-            #         "%r object has no attribute %r" % (cls.__name__, name)
-            #     )
+        def __setattr__(self, name, value):
+            # special-case hack to bypass setattr overriding
+            if name in ('_class', 'locals'):
+                return object.__setattr__(self, name, value)
+            # TODO: deal with data descriptors
+            self.locals[name] = value
 
 class Method(object):
     def __init__(self, obj, _class, func):
