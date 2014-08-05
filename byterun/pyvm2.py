@@ -936,6 +936,8 @@ class VirtualMachine(object):
             if func.im_self:
                 posargs.insert(0, func.im_self)
             # The first parameter must be the correct type.
+            # NB. only in Python 2 do methods have "im_func" fields.
+            # This is good, because only in Python2 should we do this check.
             if not self.isinstance(posargs[0], func.im_class):
                 raise TypeError(
                     'unbound method %s() must be called with %s instance '
