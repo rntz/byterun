@@ -87,11 +87,11 @@ class Function(object):
         return retval
 
 if PY2:
-    def dummy_mro(cls):
-        return [cls]
 
     class Class(object):
         def __init__(self, name, bases, methods):
+            # These are double-underscored so that compute_mro doesn't need to
+            # distinguish between our Classes and Python's classes.
             self.__name__ = name
             self.__bases__ = bases
             self.locals = dict(methods)
@@ -152,8 +152,8 @@ if PY2:
 
         def resolve_attr(self, name):
             """
-            Find an attribute in self and return it raw. This does not handle
-            properties or method wrapping.
+            Find an attribute in our MRO and return it raw (i.e. without any
+            special-case handling of descriptors such as method wrapping, etc).
             """
             for base in self.__getattribute__('__mro__'):
                 if isinstance(base, Class):

@@ -933,7 +933,7 @@ class VirtualMachine(object):
         frame = self.frame
         if hasattr(func, 'im_func'):
             # Methods get self as an implicit first parameter.
-            if func.im_self:
+            if func.im_self is not None:
                 posargs.insert(0, func.im_self)
             # The first parameter must be the correct type.
             # NB. only in Python 2 do methods have "im_func" fields.
