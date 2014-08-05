@@ -170,7 +170,7 @@ if PY2:
                         # Avoid using getattr so we can handle method wrapping
                         return base.__dict__[name]
             raise AttributeError(
-                "%r class has no attribute %r" % (self.__name__, name)
+                "type object %r has no attribute %r" % (self.__name__, name)
             )
 
     class Object(object):
