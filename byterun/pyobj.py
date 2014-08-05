@@ -96,6 +96,7 @@ if PY2:
             self.__bases__ = bases
             self.locals = dict(methods)
             self.__mro__ = self._compute_mro(self)
+            self.enable_setattr = () # value is irrelevant
 
         def __call__(self, *args, **kw):
             return Object(self, {}, args, kw)
@@ -112,6 +113,11 @@ if PY2:
             # Not a descriptor, return the value.
             return val
 
+        def __setattr__(self, name, value):
+            if not hasattr(self, 'enable_setattr'):
+                return object.__setattr__(self, name, value)
+            # TODO: what about data descriptors on classes? is that possible?
+            self.locals[name] = value
 
         @classmethod
         def mro_merge(cls, seqs):
@@ -171,6 +177,7 @@ if PY2:
         def __init__(self, _class, methods, args, kw):
             self._class = _class
             self.locals = methods
+            self.enable_setattr = () # value is irrelevant
             _class.resolve_attr('__init__')(self, *args, **kw)
 
         def __repr__(self):         # pragma: no cover
@@ -208,8 +215,7 @@ if PY2:
             return val
 
         def __setattr__(self, name, value):
-            # special-case hack to bypass setattr overriding
-            if name in ('_class', 'locals'):
+            if not hasattr(self, 'enable_setattr'):
                 return object.__setattr__(self, name, value)
             # TODO: deal with data descriptors
             self.locals[name] = value
