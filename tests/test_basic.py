@@ -490,6 +490,13 @@ class TestIt(vmtest.VmTestCase):
             m(Thing(), 1815)
             """)
 
+    def test_unbound_methods_on_non_instance(self):
+        self.assert_ok("""\
+            class Thing(object):
+                def meth(self): return self
+            print(Thing.meth(2))
+            """)
+
     def test_bound_methods(self):
         self.assert_ok("""\
             class Thing(object):
