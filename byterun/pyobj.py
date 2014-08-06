@@ -106,9 +106,8 @@ if PY2:
         def __getattr__(self, name):
             val = self.resolve_attr(name)
             # Check if we have a descriptor
-            get = getattr(val, '__get__', None)
-            if get:
-                return get(None, self)
+            if hasattr(val, '__get__'):
+                return val.__get__(None, self)
             # Not a descriptor, return the value.
             return val
 
