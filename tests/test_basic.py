@@ -422,6 +422,22 @@ class TestIt(vmtest.VmTestCase):
             print(t)
             """)
 
+    def test_dunder_repr_class(self):
+        self.assert_ok("""\
+            class Thing(object):
+                pass
+            t = Thing()
+            Thing.__repr__(t)
+            """)
+
+    def test_dunder_repr_instance(self):
+        self.assert_ok("""\
+            class Thing(object):
+                pass
+            t = Thing()
+            t.__repr__()
+            """)
+
     def test_type_of(self):
         self.assert_ok("""\
             class A(object): pass
