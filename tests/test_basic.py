@@ -645,6 +645,32 @@ class TestIt(vmtest.VmTestCase):
             print(b.x)
             """)
 
+    def test_the_frame_remains_the_same(self):
+        self.assert_ok("""\
+            import sys
+            a = sys._getframe()
+            b = sys._getframe()
+            assert a is b
+            """)
+
+    def test_function_frame_remains_the_same(self):
+        self.assert_ok("""\
+            import sys
+            def fnord():
+                a = sys._getframe()
+                b = sys._getframe()
+                assert a is b
+            fnord()
+            """)
+
+    def test_function_frame_parentage(self):
+        self.assert_ok("""\
+            import sys
+            def fnord(): return sys._getframe()
+            module = sys._getframe()
+            a = fnord()
+            assert module is a.f_back
+            """)
 
 if PY2:
     class TestPrinting(vmtest.VmTestCase):
