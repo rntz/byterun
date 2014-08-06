@@ -413,13 +413,22 @@ class TestIt(vmtest.VmTestCase):
             print(f.locals)
             """)
 
-    def test_repr(self):
+    def test_print_custom_repr(self):
         self.assert_ok("""\
             class A(object):
                 def __repr__(self):
                     return 'an A'
             t = A()
             print(t)
+            """)
+
+    def test_repr(self):
+        self.assert_ok("""\
+            class A(object):
+                def __repr__(self):
+                    return 'an A'
+            t = A()
+            print(repr(t))
             """)
 
     def test_dunder_repr_class(self):
