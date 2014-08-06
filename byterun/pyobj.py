@@ -87,7 +87,6 @@ class Function(object):
         return retval
 
 if PY2:
-
     class Class(object):
         def __init__(self, name, bases, methods):
             # These are double-underscored so that compute_mro doesn't need to
@@ -99,7 +98,7 @@ if PY2:
             self.enable_setattr = () # value is irrelevant
 
         def __call__(self, *args, **kw):
-            return Object(self, {}, args, kw)
+            return Object(self, args, kw)
 
         def __repr__(self):         # pragma: no cover
             return '<Class %s at 0x%08x>' % (self.__name__, id(self))
@@ -174,9 +173,9 @@ if PY2:
             )
 
     class Object(object):
-        def __init__(self, _class, methods, args, kw):
+        def __init__(self, _class, args, kw):
             self._class = _class
-            self.locals = methods
+            self.locals = {}
             self.enable_setattr = () # value is irrelevant
             _class.resolve_attr('__init__')(self, *args, **kw)
 
