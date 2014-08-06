@@ -436,6 +436,21 @@ class TestIt(vmtest.VmTestCase):
             assert isinstance(a, A)
             """)
 
+    def test_dir_class(self):
+        self.assert_ok("""\
+            class A(object):
+                pass
+            print(list(sorted(dir(A))))
+            """)
+
+    def test_dir_instance(self):
+        self.assert_ok("""\
+            class A(object):
+                pass
+            a = A()
+            print(list(sorted(dir(a))))
+            """)
+
     def test_dunder_class(self):
         self.assert_ok("""\
             class A(object): pass
